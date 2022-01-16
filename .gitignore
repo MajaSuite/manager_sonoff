@@ -1,0 +1,8 @@
+.DS_Store
+.idea
+.vscode
+*.iml
+*.crt
+*.key
+*.db
+manager_sonoff
