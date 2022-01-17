@@ -6,20 +6,21 @@ import (
 	"log"
 )
 
-type DeviceInfo struct {
-	Id     string `json:"deviceid"`
-	Key    string `json:"apikey"`
-	Chip   string `json:"chipid"`
-	Method string `json:"accept"`
-}
-
-type DeviceRegister struct {
-	Version float64 `json:"version"`
-	Sid     string  `json:"ssid"`
-	Pass    string  `json:"password"`
-	Ip      string  `json:"serverName"`
-	Port    string  `json:"port"`
-}
+type (
+	DeviceInfo struct {
+		Id     string `json:"deviceid"`
+		Key    string `json:"apikey"`
+		Chip   string `json:"chipid"`
+		Method string `json:"accept"`
+	}
+	DeviceRegister struct {
+		Version float64 `json:"version"`
+		Sid     string  `json:"ssid"`
+		Pass    string  `json:"password"`
+		Ip      string  `json:"serverName"`
+		Port    string  `json:"port"`
+	}
+)
 
 func New(sid string, pass string, ip string, port string) error {
 	// getting device info

@@ -54,20 +54,22 @@ func main() {
 	mqtt.Sendout <- sp
 	mqttId++
 
-	devices := make(map[string]*sonoff.Entry)
+	devices := make(map[string]*sonoff.Device)
 
 	// fetch command data from mqtt server
 	go func() {
 		for {
 			for pkt := range mqtt.Broker {
 				if pkt.Type() == packet.PUBLISH {
-					var entry sonoff.Entry
+					var entry sonoff.Device
 					topics := strings.Split(pkt.(*packet.PublishPacket).Topic, "/")
 					if err := json.Unmarshal([]byte(pkt.(*packet.PublishPacket).Payload), &entry); err == nil {
 						if entry.Cmd != "" {
 							log.Printf("run command for %s", topics[1])
 							if devices[topics[1]] != nil {
-								devices[topics[1]].Run(entry.Cmd, entry.Data1, entry.Data2)
+								if err := devices[topics[1]].Run(entry.Cmd, entry.Data1, entry.Data2); err != nil {
+									log.Println("error running command", err)
+								}
 							}
 						} else {
 							// restore devices from mqtt
@@ -94,12 +96,10 @@ func main() {
 
 	// receive updates from devices
 	for entry := range discovery.Reporter {
-		// todo convert data array
-		// {data1=4Tp/SNAMhzqOdUaRY5baGfQx1MQA7Q615K5lOk2+csHwnVOelBpXMUjWb2tpCQ+HWyxnjv5yCNrwGUlQg/BOmw==
-		//		iv=NTc0NjU2MzIwMTg0NTc5Mg== encrypt=true seq=1 id=10010ac611 apivers=1 type=light txtvers=1}
-		// {"switch":"on","startup":"stay","pulse":"on","pulseWidth":2000,"ssid":"eWeLink","otaUnlock":true}
 		if entry.Encrypt == true {
-			// data1 && iv
+			// todo ???
+			// [data1=4Tp/SNAMhzqOdUaRY5baGfQx1MQA7Q615K5lOk2+csHwnVOelBpXMUjWb2tpCQ+HWyxnjv5yCNrwGUlQg/BOmw==
+			//		iv=NTc0NjU2MzIwMTg0NTc5Mg== encrypt=true seq=1 id=10010ac611 apivers=1 type=light txtvers=1]
 		} else {
 			var data1 sonoff.Data
 			if err := json.Unmarshal([]byte(entry.Data1), &data1); err == nil {

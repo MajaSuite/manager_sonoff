@@ -19,13 +19,13 @@ var (
 
 type Discovery struct {
 	domain   string
-	Reporter chan *sonoff.Entry
+	Reporter chan *sonoff.Device
 }
 
 func NewDiscovery(domain string) (*Discovery, error) {
 	d := &Discovery{
 		domain:   domain,
-		Reporter: make(chan *sonoff.Entry),
+		Reporter: make(chan *sonoff.Device),
 	}
 
 	uconn, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4zero, Port: 0})
@@ -98,8 +98,8 @@ func (d *Discovery) listener(mpkt *ipv4.PacketConn) error {
 			continue
 		}
 
-		entry := sonoff.Entry{}
-		entry.Ip = strings.Split(src.String(), ":")[0]
+		device := sonoff.Device{}
+		device.Ip = strings.Split(src.String(), ":")[0]
 		var service string
 		for _, answer := range append(msg.Answer, msg.Extra...) {
 			switch answer.Header().Rrtype {
@@ -110,28 +110,28 @@ func (d *Discovery) listener(mpkt *ipv4.PacketConn) error {
 					v := pair[len(s[0])+1:]
 					switch s[0] {
 					case "data1":
-						entry.Data1 = v
+						device.Data1 = v
 					case "iv":
-						entry.IV = v
+						device.IV = v
 					case "encrypt":
-						entry.Encrypt = utils.ConvertBool(v)
+						device.Encrypt = utils.ConvertBool(v)
 					case "seq":
-						entry.Seq = utils.ConvertInt(v)
+						device.Seq = utils.ConvertInt(v)
 					case "id":
-						entry.DeviceId = v
+						device.DeviceId = v
 					case "apivers":
-						entry.ApiVers = utils.ConvertInt(v)
+						device.ApiVers = utils.ConvertInt(v)
 					case "txtvers":
-						entry.TxtVers = utils.ConvertInt(v)
+						device.TxtVers = utils.ConvertInt(v)
 					case "type":
-						entry.Type = v
+						device.Type = v
 					}
 				}
 			}
 		}
 
 		if strings.HasSuffix(service, d.domain) {
-			d.Reporter <- &entry
+			d.Reporter <- &device
 		}
 	}
 }
