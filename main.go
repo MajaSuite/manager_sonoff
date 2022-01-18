@@ -69,6 +69,8 @@ func main() {
 							if devices[topics[1]] != nil {
 								if err := devices[topics[1]].Run(entry.Cmd, entry.Data1, entry.Data2); err != nil {
 									log.Println("error running command", err)
+								} else {
+									// send results back to mqtt server
 								}
 							}
 						} else {
@@ -97,7 +99,7 @@ func main() {
 	// receive updates from devices
 	for entry := range discovery.Reporter {
 		if entry.Encrypt == true {
-			// todo ???
+			// todo ??? are you kidding?
 			// [data1=4Tp/SNAMhzqOdUaRY5baGfQx1MQA7Q615K5lOk2+csHwnVOelBpXMUjWb2tpCQ+HWyxnjv5yCNrwGUlQg/BOmw==
 			//		iv=NTc0NjU2MzIwMTg0NTc5Mg== encrypt=true seq=1 id=10010ac611 apivers=1 type=light txtvers=1]
 		} else {

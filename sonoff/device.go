@@ -2,28 +2,6 @@ package sonoff
 
 import "fmt"
 
-/*
-{
-	data1=WQimgeLh4QyLfmg4wCqjmxLKJPIGAn2xqwECJyIwYPVCKDw2HcGpjC3+FStTkx0wiR/r68Qkvutyz55LnLC/sQ==
-	iv=MTkzNTAxNTc3MTYzODk3OQ==
-	encrypt=true
-	seq=1
-	id=10010aaa26
-	apivers=1
-	type=light
-	txtvers=1
-}
-
-{
-	"txtvers=1",
-	"id"="10010aaa26",
-	"type"="switch?",
-	"apivers"=1,
-	"seq"=1,
-	"data1"={"switch":"on","startup":"stay","pulse":"on","pulseWidth":2000,"ssid":"eWeLink","otaUnlock":true}
-}
-
-*/
 type Device struct {
 	Ip       string `json:"ip,omitempty"`
 	Type     string `json:"type"`
@@ -45,4 +23,9 @@ type Device struct {
 func (e *Device) String() string {
 	return fmt.Sprintf(`{"ip":"%s","type":"%s","deviceid":"%s","txtvers":%d,"apivers":%d,"seq":%d,"encrypt":%v,"iv":"%s","data1":"%s","data2":"%s","data3":"%s","data4":"%s"}`,
 		e.Ip, e.Type, e.DeviceId, e.TxtVers, e.ApiVers, e.Seq, e.Encrypt, e.IV, e.Data1, e.Data2, e.Data3, e.Data4)
+}
+
+func (d *Data) String() string {
+	return fmt.Sprintf(`{"switch":"%s","startup":"%s","pulse":"%s","pulseWidth":%d,"ssid":"%s","otaUnlock":"%v","fwVersion":"%s","deviceid":"%s","bssid":"%s","signalStrength":%d"}`,
+		d.Switch, d.Startup, d.Pulse, d.PulseWidth, d.Ssid, d.OtaUnlock, d.FwVersion, d.Deviceid, d.Bssid, d.Strength)
 }
