@@ -65,7 +65,6 @@ func main() {
 					topics := strings.Split(pkt.(*packet.PublishPacket).Topic, "/")
 					if err := json.Unmarshal([]byte(pkt.(*packet.PublishPacket).Payload), &entry); err == nil {
 						if entry.Cmd != "" {
-							log.Printf("run command for %s", topics[1])
 							if devices[topics[1]] != nil {
 								if err := devices[topics[1]].Run(entry.Cmd, entry.Data1, entry.Data2); err != nil {
 									log.Println("error running command", err)

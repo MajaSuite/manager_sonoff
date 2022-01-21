@@ -107,24 +107,26 @@ func (d *Discovery) listener(mpkt *ipv4.PacketConn) error {
 				service = answer.(*dns.TXT).Hdr.Name
 				for _, pair := range answer.(*dns.TXT).Txt {
 					s := strings.Split(pair, "=")
-					v := pair[len(s[0])+1:]
-					switch s[0] {
-					case "data1":
-						device.Data1 = v
-					case "iv":
-						device.IV = v
-					case "encrypt":
-						device.Encrypt = utils.ConvertBool(v)
-					case "seq":
-						device.Seq = utils.ConvertInt(v)
-					case "id":
-						device.DeviceId = v
-					case "apivers":
-						device.ApiVers = utils.ConvertInt(v)
-					case "txtvers":
-						device.TxtVers = utils.ConvertInt(v)
-					case "type":
-						device.Type = v
+					if len(s) > 1 {
+						v := pair[len(s[0])+1:]
+						switch s[0] {
+						case "data1":
+							device.Data1 = v
+						case "iv":
+							device.IV = v
+						case "encrypt":
+							device.Encrypt = utils.ConvertBool(v)
+						case "seq":
+							device.Seq = utils.ConvertInt(v)
+						case "id":
+							device.DeviceId = v
+						case "apivers":
+							device.ApiVers = utils.ConvertInt(v)
+						case "txtvers":
+							device.TxtVers = utils.ConvertInt(v)
+						case "type":
+							device.Type = v
+						}
 					}
 				}
 			}
