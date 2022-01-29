@@ -1,5 +1,5 @@
-github.com/MajaSuite/mqtt v0.2.3 h1:MMnLUmAC+arTutqJwM0z/6/ARMgZ4xiv2iJK/moeVR0=
-github.com/MajaSuite/mqtt v0.2.3/go.mod h1:cbOCgbCswDWvmNAuLDpcnldqws/hMnX8N9fdiLDvvd8=
+github.com/MajaSuite/mqtt v0.2.4 h1:tqcTg+4wuhM+kdToQAPjq9sju8WrI8sKdpi125SwSjk=
+github.com/MajaSuite/mqtt v0.2.4/go.mod h1:cbOCgbCswDWvmNAuLDpcnldqws/hMnX8N9fdiLDvvd8=
 github.com/mattn/go-sqlite3 v1.14.5/go.mod h1:WVKg1VTActs4Qso6iwGbiFih2UIHo0ENGwNd0Lj+XmI=
 github.com/miekg/dns v1.1.45 h1:g5fRIhm9nx7g8osrAvgb16QJfmyMsyOCb+J7LSv+Qzk=
 github.com/miekg/dns v1.1.45/go.mod h1:e3IlAVfNqAllflbibAZEWOXOQ+Ynzk/dDozDxY7XnME=

@@ -3,7 +3,7 @@ module manager_sonoff
 go 1.17
 
 require (
-	github.com/MajaSuite/mqtt v0.2.3
+	github.com/MajaSuite/mqtt v0.2.4
 	github.com/miekg/dns v1.1.45
 	golang.org/x/net v0.0.0-20220114011407-0dd24b26b47d
 )

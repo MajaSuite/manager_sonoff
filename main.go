@@ -41,17 +41,16 @@ func main() {
 	// connect to mqtt
 	log.Println("try connect to mqtt")
 	var mqttId uint16 = 1
-	mqtt, err := transport.Connect(*srv, *clientid, uint16(*keepalive), *login, *pass, *debug)
-	if err != nil {
-		panic("can't connect to mqtt server " + err.Error())
+	mqtt := transport.Connect(*srv, *clientid, uint16(*keepalive), false, *login, *pass, *debug)
+	if mqtt == nil {
+		panic("can't connect to mqtt server ")
 	}
-	go mqtt.Start()
 
 	log.Println("subscribe to managed topics")
 	sp := packet.NewSubscribe()
 	sp.Id = mqttId
 	sp.Topics = []packet.SubscribePayload{{Topic: "sonoff/#", QoS: 1}}
-	mqtt.Sendout <- sp
+	mqtt.Send <- sp
 	mqttId++
 
 	devices := make(map[string]*sonoff.Device)
@@ -59,7 +58,7 @@ func main() {
 	// fetch command data from mqtt server
 	go func() {
 		for {
-			for pkt := range mqtt.Broker {
+			for pkt := range mqtt.Receive {
 				if pkt.Type() == packet.PUBLISH {
 					var entry sonoff.Device
 					topics := strings.Split(pkt.(*packet.PublishPacket).Topic, "/")
@@ -117,14 +116,14 @@ func main() {
 		if devices[entry.DeviceId] == nil {
 			log.Printf("new device: %s", entry.String())
 			p.Retain = true
-			mqtt.Sendout <- p
+			mqtt.Send <- p
 			mqttId++
 		} else {
 			if entry.Seq > devices[entry.DeviceId].Seq {
 				log.Println("update device", entry.String())
 				devices[entry.DeviceId] = entry
 
-				mqtt.Sendout <- p
+				mqtt.Send <- p
 				mqttId++
 			}
 		}
