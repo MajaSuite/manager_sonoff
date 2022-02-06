@@ -22,7 +22,7 @@ type (
 	}
 )
 
-func New(sid string, pass string, ip string, port string) error {
+func NewRegistration(sid string, pass string, ip string, port string) error {
 	// getting device info
 	deviceInfo, err := httpRequest("GET", "http://10.10.7.1/device", nil)
 	if err != nil {

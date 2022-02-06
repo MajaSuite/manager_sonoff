@@ -4,13 +4,11 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/MajaSuite/mqtt/client"
 	"github.com/MajaSuite/mqtt/packet"
-	"github.com/MajaSuite/mqtt/transport"
 	"log"
 	"manager_sonoff/mdns"
 	"manager_sonoff/sonoff"
-	"strings"
-	"time"
 )
 
 var (
@@ -32,17 +30,17 @@ func main() {
 
 	if *reg {
 		log.Println("sonoff new device registration")
-		sonoff.New(*sid, *key, *serverIp, *serverPort)
+		sonoff.NewRegistration(*sid, *key, *serverIp, *serverPort)
 		return
 	}
 
-	log.Println("starting manager_sonoff ...")
+	log.Println("starting manager_sonoff")
 
 	// connect to mqtt
 	log.Println("try connect to mqtt")
 	var mqttId uint16 = 1
-	mqtt := transport.Connect(*srv, *clientid, uint16(*keepalive), false, *login, *pass, *debug)
-	if mqtt == nil {
+	mqtt, err := client.Connect(*srv, *clientid, uint16(*keepalive), false, *login, *pass, *debug)
+	if err != nil {
 		panic("can't connect to mqtt server ")
 	}
 
@@ -53,76 +51,66 @@ func main() {
 	mqtt.Send <- sp
 	mqttId++
 
-	devices := make(map[string]*sonoff.Device)
-
-	// fetch command data from mqtt server
-	go func() {
-		for {
-			for pkt := range mqtt.Receive {
-				if pkt.Type() == packet.PUBLISH {
-					var entry sonoff.Device
-					topics := strings.Split(pkt.(*packet.PublishPacket).Topic, "/")
-					if err := json.Unmarshal([]byte(pkt.(*packet.PublishPacket).Payload), &entry); err == nil {
-						if entry.Cmd != "" {
-							if devices[topics[1]] != nil {
-								if err := devices[topics[1]].Run(entry.Cmd, entry.Data1, entry.Data2); err != nil {
-									log.Println("error running command", err)
-								} else {
-									// send results back to mqtt server
-								}
-							}
-						} else {
-							// restore devices from mqtt
-							if devices[entry.DeviceId] == nil {
-								log.Printf("restore device %s", entry.DeviceId)
-								devices[entry.DeviceId] = &entry
-							}
-						}
-					} else {
-						log.Println(err)
-					}
-				}
-			}
-		}
-	}()
-
-	time.Sleep(3 * time.Second)
+	devices := make(map[string]sonoff.Device)
 
 	log.Println("start mDNS discovery")
-	discovery, err := mdns.NewDiscovery("_ewelink._tcp.local.")
+	discovery := make(chan sonoff.Device)
+	go mdns.NewDiscovery(*debug, discovery)
 	if err != nil {
 		panic(err)
 	}
 
-	// receive updates from devices
-	for entry := range discovery.Reporter {
-		if entry.Encrypt == true {
-			// todo ??? are you kidding?
-			// [data1=4Tp/SNAMhzqOdUaRY5baGfQx1MQA7Q615K5lOk2+csHwnVOelBpXMUjWb2tpCQ+HWyxnjv5yCNrwGUlQg/BOmw==
-			//		iv=NTc0NjU2MzIwMTg0NTc5Mg== encrypt=true seq=1 id=10010ac611 apivers=1 type=light txtvers=1]
-		} else {
-			var data1 sonoff.Data
-			if err := json.Unmarshal([]byte(entry.Data1), &data1); err == nil {
-				entry.Data = data1
+	// main cycle
+	for {
+		select {
+		case pkt := <-mqtt.Receive:
+			if pkt.Type() == packet.PUBLISH {
+				var dev sonoff.Device
+				//topics := strings.Split(pkt.(*packet.PublishPacket).Topic, "/")
+				if err := json.Unmarshal([]byte(pkt.(*packet.PublishPacket).Payload), &dev); err == nil {
+					// todo change logic
+					//if dev.Cmd != "" {
+					//	if devices[topics[1]] != nil {
+					//		if err := devices[topics[1]].Run(dev.Cmd, dev.Data1, dev.Data2); err != nil {
+					//			log.Println("error running command", err)
+					//		} else {
+					//			// send results back to mqtt server
+					//		}
+					//	}
+					//} else {
+					//	// restore devices from mqtt
+					//	if devices[dev.ID()] == nil {
+					//		log.Printf("restore device %s", dev.ID())
+					//		devices[dev.ID()] = dev
+					//	}
+					//}
+				} else {
+					log.Println("error unmarshal request from mqtt", err)
+				}
 			}
-		}
+		case dev := <-discovery:
+			p := packet.NewPublish()
+			p.Id = mqttId
+			p.Topic = fmt.Sprintf("sonoff/%s", dev.ID())
+			p.QoS = 1
 
-		p := packet.NewPublish()
-		p.Id = mqttId
-		p.Topic = fmt.Sprintf("sonoff/%s", entry.DeviceId)
-		p.QoS = 1
-		p.Payload = entry.String()
+			switch dev.Type() {
+			case sonoff.BULB:
+				// todo
+			case sonoff.DIY:
+				if devices[dev.ID()] == nil {
+					log.Printf("new device: %s", dev)
+					devices[dev.ID()] = dev
+					p.Retain = true
+				} else {
+					devices[dev.ID()] = dev
+				}
+				p.Payload = dev.(*sonoff.DiyDevice).String()
+			case sonoff.SOCKET:
+				// todo waits for device
+			}
 
-		if devices[entry.DeviceId] == nil {
-			log.Printf("new device: %s", entry.String())
-			p.Retain = true
-			mqtt.Send <- p
-			mqttId++
-		} else {
-			if entry.Seq > devices[entry.DeviceId].Seq {
-				log.Println("update device", entry.String())
-				devices[entry.DeviceId] = entry
-
+			if p.Payload != "" {
 				mqtt.Send <- p
 				mqttId++
 			}

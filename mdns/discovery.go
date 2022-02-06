@@ -12,80 +12,36 @@ import (
 	"time"
 )
 
+const (
+	domain = "_ewelink._tcp.local."
+)
+
 var (
 	discoveryAddr = "224.0.0.251"
 	discoveryPort = 5353
 )
 
 type Discovery struct {
-	domain   string
-	Reporter chan *sonoff.Device
 }
 
-func NewDiscovery(domain string) (*Discovery, error) {
-	d := &Discovery{
-		domain:   domain,
-		Reporter: make(chan *sonoff.Device),
-	}
-
-	uconn, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4zero, Port: 0})
-	if err != nil {
-		return nil, err
-	}
-	upkt := ipv4.NewPacketConn(uconn)
+func NewDiscovery(debug bool, chanel chan sonoff.Device) error {
+	d := &Discovery{}
 
 	addr, err := net.ResolveUDPAddr("udp4", fmt.Sprintf("%s:%d", discoveryAddr, discoveryPort))
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	mconn, err := net.ListenMulticastUDP("udp4", nil, addr)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	mpkt := ipv4.NewPacketConn(mconn)
 
-	ifaces, err := net.Interfaces()
-	if err != nil {
-		return nil, err
-	}
+	go d.notifier(mconn, addr)
 
-	for _, iface := range ifaces {
-		ifAddr, err := iface.Addrs()
-		if err != nil {
-			return nil, err
-		}
-
-		for _, ifaddr := range ifAddr {
-			// skip ipv6
-			if strings.Contains(ifaddr.String(), "::") {
-				continue
-			}
-
-			// skip localhost
-			if strings.Contains(ifaddr.String(), "127.0.0.1") {
-				continue
-			}
-
-			ifAddr := strings.Split(ifaddr.String(), "/")
-
-			log.Printf("join to %s interface with ip %s", iface.Name, ifAddr[0])
-
-			if err := upkt.JoinGroup(&iface, &net.UDPAddr{IP: net.ParseIP(discoveryAddr)}); err != nil {
-				log.Println("join error", err)
-			}
-
-			go d.notifier(mconn, addr)
-			go d.listener(mpkt)
-		}
-	}
-
-	return d, nil
-}
-
-func (d *Discovery) listener(mpkt *ipv4.PacketConn) error {
-	buffer := make([]byte, 65536)
 	for {
+		buffer := make([]byte, 65536)
 		_, _, src, err := mpkt.ReadFrom(buffer)
 		if err != nil {
 			log.Printf("failed to read packet: %v", err)
@@ -98,8 +54,10 @@ func (d *Discovery) listener(mpkt *ipv4.PacketConn) error {
 			continue
 		}
 
-		device := sonoff.Device{}
-		device.Ip = strings.Split(src.String(), ":")[0]
+		var data, iv, id, tp string
+		var seq, api, txt int
+		var enc bool
+		var ip = strings.Split(src.String(), ":")[0]
 		var service string
 		for _, answer := range append(msg.Answer, msg.Extra...) {
 			switch answer.Header().Rrtype {
@@ -111,37 +69,52 @@ func (d *Discovery) listener(mpkt *ipv4.PacketConn) error {
 						v := pair[len(s[0])+1:]
 						switch s[0] {
 						case "data1":
-							device.Data1 = v
+							data = v
 						case "iv":
-							device.IV = v
+							iv = v
 						case "encrypt":
-							device.Encrypt = utils.ConvertBool(v)
+							enc = utils.ConvertBool(v)
 						case "seq":
-							device.Seq = utils.ConvertInt(v)
+							seq = utils.ConvertInt(v)
 						case "id":
-							device.DeviceId = v
+							id = v
 						case "apivers":
-							device.ApiVers = utils.ConvertInt(v)
+							api = utils.ConvertInt(v)
 						case "txtvers":
-							device.TxtVers = utils.ConvertInt(v)
+							txt = utils.ConvertInt(v)
 						case "type":
-							device.Type = v
+							tp = v
 						}
 					}
 				}
 			}
 		}
 
-		if strings.HasSuffix(service, d.domain) {
-			d.Reporter <- &device
+		if strings.HasSuffix(service, domain) {
+			switch tp {
+			case "light":
+				dev := sonoff.NewBulb(id, ip, api, txt, seq, data, iv, enc)
+				if dev != nil {
+					chanel <- dev
+				}
+			case "diy":
+				dev := sonoff.NewDIY(id, ip, api, txt, seq, data)
+				if dev != nil {
+					chanel <- dev
+				}
+			case "socket":
+				//...
+			}
 		}
 	}
+
+	return nil
 }
 
 func (d *Discovery) notifier(conn *net.UDPConn, addr *net.UDPAddr) {
 	for {
 		m := new(dns.Msg)
-		m.SetQuestion(d.domain, dns.TypePTR)
+		m.SetQuestion(domain, dns.TypePTR)
 		m.RecursionDesired = false
 
 		buf, err := m.Pack()

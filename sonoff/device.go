@@ -2,30 +2,63 @@ package sonoff
 
 import "fmt"
 
-type Device struct {
-	Ip       string `json:"ip,omitempty"`
-	Type     string `json:"type"`
-	DeviceId string `json:"deviceid"`
-	Name     string `json:"name"`
-	TxtVers  int    `json:"txtvers"`
-	ApiVers  int    `json:"apivers"`
-	Seq      int    `json:"seq"`
-	Encrypt  bool   `json:"encrypt"`
-	IV       string `json:"iv,omitempty"`
-	Data     Data   `json:"-"`
-	Data1    string `json:"data1,omitempty"`
-	Data2    string `json:"data2,omitempty"`
-	Data3    string `json:"data3,omitempty"`
-	Data4    string `json:"data4,omitempty"`
-	Cmd      string `json:"cmd,omitempty"`
+const (
+	NO_TYPE Type = iota
+	BULB
+	DIY
+	SOCKET
+)
+
+type Type byte
+
+func (t Type) String() string {
+	switch t {
+	case BULB:
+		return "Bulb"
+	case DIY:
+		return "DIY device"
+	case SOCKET:
+		return "Power socket"
+	default:
+		return "n/a"
+	}
 }
 
-func (e *Device) String() string {
-	return fmt.Sprintf(`{"ip":"%s","type":"%s","deviceid":"%s","txtvers":%d,"apivers":%d,"seq":%d,"encrypt":%v,"iv":"%s","data1":"%s","data2":"%s","data3":"%s","data4":"%s"}`,
-		e.Ip, e.Type, e.DeviceId, e.TxtVers, e.ApiVers, e.Seq, e.Encrypt, e.IV, e.Data1, e.Data2, e.Data3, e.Data4)
+type Device interface {
+	Type() Type
+	ID() string
+	IP() string
+	Name() string
+	String() string
 }
 
-func (d *Data) String() string {
-	return fmt.Sprintf(`{"switch":"%s","startup":"%s","pulse":"%s","pulseWidth":%d,"ssid":"%s","otaUnlock":"%v","fwVersion":"%s","deviceid":"%s","bssid":"%s","signalStrength":%d"}`,
-		d.Switch, d.Startup, d.Pulse, d.PulseWidth, d.Ssid, d.OtaUnlock, d.FwVersion, d.Deviceid, d.Bssid, d.Strength)
+type SonoffDevice struct {
+	deviceType Type   `json:"type"`
+	deviceId   string `json:"deviceid"`
+	deviceIp   string `json:"ip,omitempty"`
+	deviceName string `json:"name"`
+	txtVers    int    `json:"txtvers"`
+	apiVers    int    `json:"apivers"`
+	seq        int    `json:"seq"`
+}
+
+func (sd *SonoffDevice) Type() Type {
+	return sd.deviceType
+}
+
+func (sd *SonoffDevice) ID() string {
+	return sd.deviceId
+}
+
+func (sd *SonoffDevice) IP() string {
+	return sd.deviceIp
+}
+
+func (sd *SonoffDevice) Name() string {
+	return sd.deviceName
+}
+
+func (sd *SonoffDevice) String() string {
+	return fmt.Sprintf(`"type":"%s","id":"%s","ip":"%s","name":"%s",txtvers":%d,"apivers":%d,"seq":%d`,
+		sd.deviceType, sd.deviceId, sd.deviceIp, sd.deviceName, sd.txtVers, sd.apiVers, sd.seq)
 }
